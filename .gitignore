@@ -1,0 +1,20 @@
+# Entorno virtual
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Archivos de video/audio (probablemente pesados)
+*.mp4
+*.mp3
+*.wav
+*.mov
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
