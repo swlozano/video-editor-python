@@ -20,6 +20,8 @@ beat_times = librosa.frames_to_time(beat_frames, sr=sr)
 video = VideoFileClip(VIDEO_PATH)
 clips = []
 
+
+
 for i in range(len(beat_times) - 1):
     start = beat_times[i]
     end = beat_times[i + 1]
@@ -49,7 +51,30 @@ video_con_audio = video.with_audio(audio)
 video_con_audio.write_videofile(VIDEO_EDIT_OUTH)
 
 
+import random
 
+videox = VideoFileClip(VIDEO_PATH)
+clips = []
 
+for inicio, fin in zip(beat_times[:-1], beat_times[1:]):
+    duracion = fin - inicio
+
+    max_inicio = videox.duration - duracion
+    if max_inicio <= 0:
+        continue
+
+    random_inicio = random.uniform(0, max_inicio)
+
+    clips.append(
+        videox.subclipped(random_inicio, random_inicio + duracion)
+    )
+
+resultado = concatenate_videoclips(clips)
+resultado.write_videofile("r.mp4")
+
+videor = VideoFileClip("r.mp4")
+
+videoAudio = videor.with_audio(audio)
+videoAudio.write_videofile("videoaudio.mp4")
 
 
