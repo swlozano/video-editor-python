@@ -174,7 +174,7 @@ if __name__ == '__main__':
     # --- Parámetros configurables ---
     WIDTH = 1080
     HEIGHT = 1920
-    DURATION_PER_FRAME = 0.5   # segundos que dura cada frame
+    DURATION_PER_FRAME = 0.1   # segundos que dura cada frame
     FPS = 30
     OUTPUT_VIDEO = 'animacion.mp4'
 

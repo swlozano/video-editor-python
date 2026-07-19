@@ -7,7 +7,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Subir un nivel para llegar a la raíz del proyecto (video-editor/)
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
 
-video_path = os.path.join(PROJECT_ROOT, "proyects/test/video/short.mp4")
+video_path = os.path.join(PROJECT_ROOT, "proyects/test/video/v1.mp4")
 output_dir = os.path.join(PROJECT_ROOT, "out/frame")
 
 resultado = extraer_frames(
