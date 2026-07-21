@@ -109,9 +109,12 @@ def get_video_duration(path):
         return 0.0
 
 
-def run_video_glue(clips_dir, output_path):
+def run_video_glue(clips_dirs, output_path):
     """Llama a video_glue.py para unir clips."""
-    cmd = [sys.executable, str(SCRIPT_DIR / "video_glue.py"), str(clips_dir), "--output", str(output_path)]
+    cmd = [sys.executable, str(SCRIPT_DIR / "video_glue.py")]
+    for d in clips_dirs:
+        cmd.append(str(d))
+    cmd += ["--output", str(output_path)]
     print(f"[INFO] Uniendo clips con video_glue...")
     run_cmd(cmd, "video_glue falló")
     print(f"[INFO] Video base generado: {output_path}")
@@ -151,8 +154,8 @@ def main():
     )
     parser.add_argument("--audio", type=Path, required=True,
                         help="Archivo de audio a analizar con detect_bands")
-    parser.add_argument("--clips", type=Path, required=True,
-                        help="Carpeta con clips de video para video_glue")
+    parser.add_argument("--clips", type=Path, nargs="+", required=True,
+                        help="Carpeta(s) con clips de video para video_glue")
     parser.add_argument("--song", type=Path, required=True,
                         help="Canción para reemplazar el audio final")
     parser.add_argument("--num-items", type=int, default=5,
@@ -170,12 +173,14 @@ def main():
     parser.add_argument("--keep-boomerang", action="store_true",
                         help="Guardar el video boomerang generado (default: no guardar)")
     args = parser.parse_args()
+    print(args)
 
     # Validaciones
     if not args.audio.exists():
         sys.exit(f"[ERROR] No existe el archivo de audio: {args.audio}")
-    if not args.clips.is_dir():
-        sys.exit(f"[ERROR] No existe la carpeta de clips: {args.clips}")
+    for d in args.clips:
+        if not d.is_dir():
+            sys.exit(f"[ERROR] No existe la carpeta de clips: {d}")
     if not args.song.exists():
         sys.exit(f"[ERROR] No existe la canción: {args.song}")
 

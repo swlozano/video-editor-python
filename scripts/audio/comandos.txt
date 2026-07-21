@@ -3,3 +3,16 @@ python boomerang_video.py resumen.mp4 --range 10.913-11.424 --range 17.601-18.04
 python detect_bands.py beatBox.wav --out result_beat_box.csv
 
 python3 video_cutter.py video.mkv --clip-duration 2 --output resumen.mp4 --csv video-edit.csv --total-duration 45
+
+yt-dlp -f best "URL"
+
+
+yt-dlp -f best "https://www.youtube.com/watch?v=eOrzH0kmegw"
+
+
+# Linux/macOS
+yt-dlp -o "~/Descargas/%(title)s.%(ext)s" --merge-output-format mkv "https://www.youtube.com/watch?v=eOrzH0kmegw"
+ yt-dlp -o "~/Descargas/%(title)s.%(ext)s" --cookies-from-browser brave  --merge-output-format mkv "https://www.youtube.com/watch?v=eOrzH0kmegw"
+
+
+yt-dlp -o "~/Descargas/%(title)s.%(ext)s" --cookies-from-browser brave -f "bestvideo[height<=1080]+bestaudio" --merge-output-format mkv "https://www.youtube.com/watch?v=9B0RpT90SnQ"
