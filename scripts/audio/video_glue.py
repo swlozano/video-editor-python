@@ -94,6 +94,8 @@ def main():
                         help="Extensiones de video a buscar (default: todas las comunes)")
     parser.add_argument("--duration", type=float, default=None,
                         help="Duración máxima del video final en segundos (default: sin límite)")
+    parser.add_argument("--output", type=Path, default=None,
+                        help="Video de salida (default: out/glue/{timestamp}/video_final.mp4)")
     args = parser.parse_args()
 
     # Validar directorios
@@ -156,10 +158,15 @@ def main():
         if not normalized:
             sys.exit("[ERROR] Ningún video pudo ser procesado.")
 
-        # Crear carpeta out/glue/{timestamp}/
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        out_dir = Path("out") / "glue" / timestamp
-        out_dir.mkdir(parents=True, exist_ok=True)
+        # Determinar ruta de salida
+        if args.output:
+            output_path = args.output
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            out_dir = Path("out") / "glue" / timestamp
+            out_dir.mkdir(parents=True, exist_ok=True)
+            output_path = out_dir / "video_final.mp4"
 
         # Video temporero para recortar si es necesario
         temp_output = tmp_dir / "concat_raw.mp4"
@@ -174,13 +181,13 @@ def main():
                 "-t", f"{args.duration:.3f}",
                 "-c:v", "libx264", "-preset", "fast", "-crf", "20",
                 "-c:a", "aac", "-b:a", "128k",
-                str(out_dir / output_path.name),
+                str(output_path),
             ]
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 sys.exit(f"[ERROR] ffmpeg falló al recortar: {result.stderr}")
         else:
-            shutil.move(str(temp_output), str(out_dir / output_path.name))
+            shutil.move(str(temp_output), str(output_path))
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
