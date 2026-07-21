@@ -20,11 +20,13 @@ FLUJO GENERAL
 3. Se lleva un historial persistente (--history) con todos los fragmentos
    (inicio, fin) que alguna vez se usaron, para que al generar fragmentos
    nuevos (aleatorios) nunca se repita un pedazo del video ya utilizado.
-4. Se recalculan las columnas output_start / output_end según el orden de
-   las filas en el CSV (esa es la posición del fragmento dentro del video
-   final generado).
-5. Se cortan los fragmentos con ffmpeg y se concatenan en el video final.
-6. Se reescribe el CSV con el resultado final (para que quede sincronizado
+4. El ORDEN DE REPRODUCCIÓN final se baraja (a menos que se use
+   --keep-order) para garantizar que el video generado NO reproduzca los
+   cortes en la misma secuencia cronológica del video original.
+5. Se recalculan las columnas output_start / output_end según ese orden
+   final (esa es la posición del fragmento dentro del video generado).
+6. Se cortan los fragmentos con ffmpeg y se concatenan en el video final.
+7. Se reescribe el CSV con el resultado final (para que quede sincronizado
    y el usuario pueda volver a editarlo para la siguiente corrida).
 
 FORMATO DEL CSV
@@ -275,6 +277,35 @@ def build_fragments(csv_rows, n_clips, video_duration, clip_duration, history):
     return fragments
 
 
+def randomize_order(fragments):
+    """Baraja el ORDEN DE REPRODUCCIÓN de los fragmentos para que el video
+    final no reproduzca los cortes en la misma secuencia cronológica del
+    video original. Esto es independiente de qué tan aleatorios sean los
+    puntos de corte: aunque los fragmentos ya se elijan al azar, si se
+    concatenan en el mismo orden en que aparecen en el video fuente, el
+    resultado igual "cuenta la historia" en el orden original. Por eso se
+    reordena explícitamente la lista antes de generar el video final."""
+    if len(fragments) < 2:
+        return fragments
+
+    original_order = list(fragments)
+    chrono_order = sorted(fragments, key=lambda f: f[0])
+
+    shuffled = list(fragments)
+    tries = 0
+    while True:
+        random.shuffle(shuffled)
+        tries += 1
+        # Nos aseguramos de que el resultado no quede igual al orden actual
+        # del CSV ni igual al orden cronológico del video original.
+        if shuffled != original_order and shuffled != chrono_order:
+            break
+        if tries > 30:
+            break  # con muy pocos fragmentos puede no haber alternativa
+
+    return shuffled
+
+
 # --------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------
@@ -298,6 +329,11 @@ def main():
                          help="Duración de cada corte en segundos (default: 30)")
     parser.add_argument("--keep-temp", action="store_true",
                          help="No borrar los clips temporales al terminar")
+    parser.add_argument("--keep-order", action="store_true",
+                         help="No barajar el orden de reproducción final: usar "
+                              "el orden de filas tal cual está en el CSV. "
+                              "Por defecto el orden SIEMPRE se baraja para que "
+                              "no coincida con la secuencia del video original.")
     args = parser.parse_args()
 
     input_path = args.input
@@ -337,6 +373,12 @@ def main():
               f"({len(csv_rows)} filas encontradas).")
 
     fragments = build_fragments(csv_rows, n_clips, video_duration, args.clip_duration, history)
+
+    if not args.keep_order:
+        fragments = randomize_order(fragments)
+        print("[INFO] Orden de reproducción barajado (no coincide con la secuencia del original).")
+    else:
+        print("[INFO] --keep-order activo: se respeta el orden de filas del CSV.")
 
     # Extraer y concatenar los clips
     tmp_dir = Path(tempfile.mkdtemp(prefix="video_cutter_"))
