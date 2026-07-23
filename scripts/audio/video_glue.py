@@ -12,6 +12,8 @@ USO
 
     python3 video_glue.py carpeta1/ carpeta2/ --duration 60
 
+    python3 video_glue.py carpeta1/ carpeta2/ --width 1280 --height 720 --fps 30
+
 Requiere ffmpeg y ffprobe instalados y accesibles en el PATH.
 """
 
@@ -46,14 +48,34 @@ def get_video_duration(path: Path) -> float:
         return 0.0
 
 
-def normalize_clip(input_path: Path, output_path: Path) -> bool:
-    """Re-codifica un clip a un códec común para poder concatenarlo."""
+def normalize_clip(input_path: Path, output_path: Path,
+                    target_w: int = 1920, target_h: int = 1080,
+                    target_fps: int = 30) -> bool:
+    """Re-codifica un clip a un formato COMÚN (resolución, fps, pixel format,
+    audio) para que la concatenación con -c copy sea realmente fluida.
+
+    Como los clips vienen de fuentes distintas, pueden tener resoluciones,
+    fps, formatos de píxel y parámetros de audio diferentes. Si no se
+    normalizan a un único formato, el 'concat -c copy' final produce saltos,
+    congelamientos o desincronización de audio.
+    """
+    # Escala manteniendo aspect ratio y rellena con negro (letterbox/pillarbox)
+    # para que TODOS los clips terminen exactamente en target_w x target_h.
+    vf = (
+        f"scale={target_w}:{target_h}:force_original_aspect_ratio=decrease,"
+        f"pad={target_w}:{target_h}:(ow-iw)/2:(oh-ih)/2,"
+        f"setsar=1,fps={target_fps}"
+    )
     cmd = [
         "ffmpeg", "-y",
         "-i", str(input_path),
+        "-vf", vf,
         "-c:v", "libx264", "-preset", "fast", "-crf", "20",
+        "-pix_fmt", "yuv420p",          # formato de píxel uniforme
         "-c:a", "aac", "-b:a", "128k",
+        "-ar", "48000", "-ac", "2",     # sample rate y canales uniformes
         "-avoid_negative_ts", "make_zero",
+        "-fps_mode", "cfr",             # frame rate constante (evita VFR)
         str(output_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -96,6 +118,12 @@ def main():
                         help="Duración máxima del video final en segundos (default: sin límite)")
     parser.add_argument("--output", type=Path, default=None,
                         help="Video de salida (default: out/glue/{timestamp}/video_final.mp4)")
+    parser.add_argument("--width", type=int, default=1920,
+                        help="Ancho común al que se normalizan todos los clips (default: 1920)")
+    parser.add_argument("--height", type=int, default=1080,
+                        help="Alto común al que se normalizan todos los clips (default: 1080)")
+    parser.add_argument("--fps", type=int, default=30,
+                        help="FPS común al que se normalizan todos los clips (default: 30)")
     args = parser.parse_args()
 
     # Validar directorios
@@ -142,6 +170,8 @@ def main():
     else:
         print(f"[INFO] Seleccionados {len(selected)} videos (~{total_dur:.2f}s)")
 
+    print(f"[INFO] Formato de normalización: {args.width}x{args.height} @ {args.fps}fps")
+
     output_path = Path("video_final.mp4")
 
     # Re-codificar cada video a un formato común en un directorio temporal
@@ -152,7 +182,10 @@ def main():
         for i, v in enumerate(selected):
             out = tmp_dir / f"part_{i:03d}.mp4"
             print(f"    - {i+1}/{len(selected)}: {v.name}")
-            if normalize_clip(v, out):
+            if normalize_clip(v, out,
+                               target_w=args.width,
+                               target_h=args.height,
+                               target_fps=args.fps):
                 normalized.append(out)
 
         if not normalized:

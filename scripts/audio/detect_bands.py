@@ -105,6 +105,32 @@ def format_time(seconds):
     return f"{m:02d}:{s:05.2f}"
 
 
+def group_consecutive(segments):
+    """Agrupa segmentos consecutivos de la misma banda."""
+    groups = []
+    current = None
+
+    for start, end, label in segments:
+        hz_range = BANDS[label]
+        if current is None or current["band"] != label or start > current["end"] + 0.1:
+            if current:
+                groups.append(current)
+            current = {
+                "start": start,
+                "end": end,
+                "band": label,
+                "freq_min": hz_range[0],
+                "freq_max": hz_range[1],
+            }
+        else:
+            current["end"] = end
+
+    if current:
+        groups.append(current)
+
+    return groups
+
+
 def main():
     parser = argparse.ArgumentParser(description="Detects when each frequency band dominates in an audio file.")
     parser.add_argument("audio", help="Path to the audio file (mp3, wav, etc.)")
@@ -144,6 +170,14 @@ def main():
 
     if not segments:
         print("  (no segments found matching those criteria)")
+
+    # Agrupación de bandas subsecuentes
+    print("\n--- Bandas subsecuentes agrupadas ---\n")
+    groups = group_consecutive(segments)
+    for g in groups:
+        duration = g["end"] - g["start"]
+        print(f"  {g['start']:.3f},{g['end']:.3f},{g['band']},{g['freq_min']},{g['freq_max']}  "
+              f"({duration:.3f}s)")
 
     if args.out:
         with open(args.out, "w", newline="", encoding="utf-8") as f:
